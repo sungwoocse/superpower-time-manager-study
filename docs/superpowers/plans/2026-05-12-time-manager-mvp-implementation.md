@@ -1573,6 +1573,43 @@ git push -u origin main
 
 Expected: repository is visible at `https://github.com/sungwoocse/superpower-time-manager-study`.
 
+## Task 11: 최종 리뷰 후 Compound Engineering 기록
+
+**Files:**
+- Create: `docs/solutions/...` through `ce-compound`
+- Modify: `AGENTS.md` only if `ce-compound` finds a discoverability gap
+
+- [ ] **Step 1: 최종 코드 리뷰가 끝났는지 확인한다**
+
+Run:
+
+```powershell
+git status --short
+```
+
+Expected: only intentional review fixes or documentation changes are present. There are no unknown implementation gaps from Tasks 1-10.
+
+- [ ] **Step 2: Compound Engineering headless 기록을 실행한다**
+
+Run through the Codex skill system after Compound Engineering is available:
+
+```text
+ce-compound mode:headless "time manager MVP implementation review cycle learnings"
+```
+
+Expected: a solution or learning document is created under `docs/solutions/`, capturing mistakes, review findings, fixes, and process lessons from the execution-review cycle.
+
+- [ ] **Step 3: Compound 결과를 커밋한다**
+
+Run:
+
+```powershell
+git add AGENTS.md docs/solutions
+git commit -m "docs: compound implementation review learnings"
+```
+
+Expected: Compound Engineering learning document is committed.
+
 ## Self-Review
 
 Spec coverage:
@@ -1583,6 +1620,7 @@ Spec coverage:
 - Event ingestion: Tasks 5 and 7.
 - Dashboard, site list, and rules view: Tasks 8 and 9.
 - Chrome/Edge manual verification: Task 10.
+- Review-cycle learnings are captured to avoid repeated mistakes: Task 11.
 - Excluded features remain excluded: no task implements blocking, notifications, cloud sync, accounts, macOS, or desktop-wide app tracking.
 
 Type consistency:
