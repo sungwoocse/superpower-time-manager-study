@@ -6,16 +6,11 @@ use std::sync::Mutex;
 
 use commands::{ingest_usage_event, AppState};
 use rusqlite::Connection;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let conn = Connection::open("time_manager.sqlite3").expect("failed to open database");
-    db::init_db(&conn).expect("failed to initialize database");
-
     tauri::Builder::default()
-        .manage(AppState {
-            conn: Mutex::new(conn),
-        })
         .invoke_handler(tauri::generate_handler![ingest_usage_event])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -25,6 +20,18 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            let app_data_dir = app.path().app_data_dir()?;
+            std::fs::create_dir_all(&app_data_dir)?;
+
+            let db_path = app_data_dir.join("time_manager.sqlite3");
+            let conn = Connection::open(db_path)?;
+            db::init_db(&conn)?;
+
+            app.manage(AppState {
+                conn: Mutex::new(conn),
+            });
+
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -1,6 +1,7 @@
-use rusqlite::{params, Connection, Result};
+use chrono::DateTime;
+use rusqlite::{params, Connection, Result as SqlResult};
 
-pub fn init_db(conn: &Connection) -> Result<()> {
+pub fn init_db(conn: &Connection) -> SqlResult<()> {
     conn.execute_batch(
         "
         create table if not exists usage_events (
@@ -55,7 +56,9 @@ pub fn insert_usage_event(
     browser: &str,
     event_type: &str,
     timestamp: &str,
-) -> Result<()> {
+) -> Result<(), String> {
+    let event = validate_usage_event(url, domain, title, browser, event_type, timestamp)?;
+
     conn.execute(
         "
         insert into usage_events
@@ -63,10 +66,76 @@ pub fn insert_usage_event(
         values
             (?1, ?2, ?3, ?4, ?5, ?6)
         ",
-        params![url, domain, title, browser, event_type, timestamp],
-    )?;
+        params![
+            event.url,
+            event.domain,
+            event.title,
+            event.browser,
+            event.event_type,
+            event.timestamp
+        ],
+    )
+    .map_err(|error| error.to_string())?;
 
     Ok(())
+}
+
+struct ValidatedUsageEvent {
+    url: String,
+    domain: String,
+    title: String,
+    browser: String,
+    event_type: String,
+    timestamp: String,
+}
+
+fn validate_usage_event(
+    url: &str,
+    domain: &str,
+    title: &str,
+    browser: &str,
+    event_type: &str,
+    timestamp: &str,
+) -> Result<ValidatedUsageEvent, String> {
+    let url = url.trim();
+    let domain = domain.trim().to_lowercase();
+    let title = title.trim();
+    let browser = browser.trim();
+    let event_type = event_type.trim();
+    let timestamp = timestamp.trim();
+
+    if url.is_empty() {
+        return Err("url is required".to_string());
+    }
+    if domain.is_empty() {
+        return Err("domain is required".to_string());
+    }
+    if title.is_empty() {
+        return Err("title is required".to_string());
+    }
+    if timestamp.is_empty() {
+        return Err("timestamp is required".to_string());
+    }
+
+    if domain.contains("://")
+        || domain.contains('/')
+        || domain.chars().any(char::is_whitespace)
+        || !domain.contains('.')
+    {
+        return Err("domain must be a host name like example.com".to_string());
+    }
+
+    DateTime::parse_from_rfc3339(timestamp)
+        .map_err(|_| "timestamp must be RFC3339".to_string())?;
+
+    Ok(ValidatedUsageEvent {
+        url: url.to_string(),
+        domain,
+        title: title.to_string(),
+        browser: browser.to_string(),
+        event_type: event_type.to_string(),
+        timestamp: timestamp.to_string(),
+    })
 }
 
 #[cfg(test)]
@@ -86,7 +155,7 @@ mod tests {
                 Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
             })
             .unwrap()
-            .collect::<Result<Vec<_>>>()
+            .collect::<SqlResult<Vec<_>>>()
             .unwrap();
 
         assert_eq!(
@@ -134,6 +203,123 @@ mod tests {
             .unwrap();
 
         assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn stores_trimmed_usage_event_with_lowercase_domain() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+
+        insert_usage_event(
+            &conn,
+            " https://Example.COM/docs ",
+            " Example.COM ",
+            " Example Docs ",
+            " chrome ",
+            " active ",
+            " 2026-05-12T08:00:00Z ",
+        )
+        .unwrap();
+
+        let row: (String, String, String, String, String, String) = conn
+            .query_row(
+                "select url, domain, title, browser, event_type, timestamp from usage_events",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        row.get(5)?,
+                    ))
+                },
+            )
+            .unwrap();
+
+        assert_eq!(
+            row,
+            (
+                "https://Example.COM/docs".to_string(),
+                "example.com".to_string(),
+                "Example Docs".to_string(),
+                "chrome".to_string(),
+                "active".to_string(),
+                "2026-05-12T08:00:00Z".to_string(),
+            )
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_usage_event_timestamp() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+
+        let result = insert_usage_event(
+            &conn,
+            "https://example.com",
+            "example.com",
+            "Example",
+            "chrome",
+            "active",
+            "2026-05-12 08:00:00",
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_empty_usage_event_url_and_title() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+
+        let empty_url = insert_usage_event(
+            &conn,
+            " ",
+            "example.com",
+            "Example",
+            "chrome",
+            "active",
+            "2026-05-12T08:00:00Z",
+        );
+        let empty_title = insert_usage_event(
+            &conn,
+            "https://example.com",
+            "example.com",
+            " ",
+            "chrome",
+            "active",
+            "2026-05-12T08:00:00Z",
+        );
+
+        assert!(empty_url.is_err());
+        assert!(empty_title.is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_usage_event_domain_shape() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+
+        for domain in [
+            "https://example.com",
+            "example.com/path",
+            "example com",
+            "localhost",
+        ] {
+            let result = insert_usage_event(
+                &conn,
+                "https://example.com",
+                domain,
+                "Example",
+                "chrome",
+                "active",
+                "2026-05-12T08:00:00Z",
+            );
+
+            assert!(result.is_err(), "domain should be rejected: {domain}");
+        }
     }
 
     #[test]
