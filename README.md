@@ -11,4 +11,36 @@ Windows-first browser time tracking MVP for personal productivity study.
 
 ## Development Status
 
-The current repository contains design and implementation planning documents. Application scaffolding comes next.
+This repository contains the MVP app, extension, local ingest API, and manual verification notes.
+
+## Development
+
+Install dependencies:
+
+```powershell
+npm install
+```
+
+Run the Tauri desktop app in development mode:
+
+```powershell
+npm run tauri dev
+```
+
+Build the Chromium extension for Chrome or Edge:
+
+```powershell
+npm run extension:build
+```
+
+Run verification before review:
+
+```powershell
+npm test
+npm run build
+npm run extension:build
+C:\Users\bluew\.cargo\bin\cargo.exe test
+C:\Users\bluew\.cargo\bin\cargo.exe check
+```
+
+Manual verification steps are in [docs/manual-test.md](docs/manual-test.md).
