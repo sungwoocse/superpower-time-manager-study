@@ -1,5 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
-import { buildUsageEvent, INGEST_TOKEN, isActiveUsageEligible, sendActiveTab } from "./background";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  buildUsageEvent,
+  CONFIG_URL,
+  isActiveUsageEligible,
+  resetIngestConfigCacheForTests,
+  sendActiveTab,
+} from "./background";
 
 describe("buildUsageEvent", () => {
   it("normalizes Instagram tab data into an active usage event", () => {
@@ -34,6 +40,10 @@ describe("buildUsageEvent", () => {
 });
 
 describe("sendActiveTab", () => {
+  beforeEach(() => {
+    resetIngestConfigCacheForTests();
+  });
+
   it("does not fetch when a usage event cannot be built", async () => {
     const fetchUsageEvent = vi.fn();
 
@@ -79,8 +89,14 @@ describe("sendActiveTab", () => {
     expect(fetchUsageEvent).not.toHaveBeenCalled();
   });
 
-  it("sends the local ingestion token header", async () => {
-    const fetchUsageEvent = vi.fn().mockResolvedValue({ ok: true });
+  it("fetches the per-install token before sending a usage event", async () => {
+    const fetchUsageEvent = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ingestToken: "install-token" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
 
     await sendActiveTab(
       { url: "https://www.instagram.com/reels/", title: "Instagram", windowId: 1 },
@@ -91,15 +107,54 @@ describe("sendActiveTab", () => {
       },
     );
 
+    expect(fetchUsageEvent).toHaveBeenNthCalledWith(1, CONFIG_URL, {
+      method: "GET",
+      headers: { accept: "application/json" },
+    });
     expect(fetchUsageEvent).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         headers: {
           "content-type": "application/json",
-          "x-time-manager-token": INGEST_TOKEN,
+          "x-time-manager-token": "install-token",
         },
       }),
     );
+  });
+
+  it("skips sending and retries config later when token fetch fails", async () => {
+    const fetchUsageEvent = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ingestToken: "install-token" }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+    const dependencies = {
+      fetchUsageEvent,
+      getWindow: async () => ({ focused: true }),
+      queryIdleState: async () => "active" as const,
+    };
+
+    await sendActiveTab(
+      { url: "https://www.instagram.com/reels/", title: "Instagram", windowId: 1 },
+      dependencies,
+    );
+    await sendActiveTab(
+      { url: "https://www.instagram.com/reels/", title: "Instagram", windowId: 1 },
+      dependencies,
+    );
+
+    expect(fetchUsageEvent).toHaveBeenNthCalledWith(1, CONFIG_URL, {
+      method: "GET",
+      headers: { accept: "application/json" },
+    });
+    expect(fetchUsageEvent).toHaveBeenNthCalledWith(2, CONFIG_URL, {
+      method: "GET",
+      headers: { accept: "application/json" },
+    });
+    expect(fetchUsageEvent).toHaveBeenCalledTimes(3);
   });
 });
 

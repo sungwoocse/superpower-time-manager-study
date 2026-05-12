@@ -3,6 +3,7 @@
   "name": "Superpower Time Manager Tracker",
   "version": "0.1.0",
   "description": "Tracks active browser tab usage for the local desktop app.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAhmELJ9uaJunKcj5sj0oL1y3it3vVFTet7S1/pkasNh4m0Mm+tpD9AEG3pHkcAAT4ghC38gCutbBL9kvvlswAhyFETbcRjq68JgWQi28Vz/8J9whSvuUknCdCmcOpDmjKhuV6JCEFDupjvrfuBmNPtv1i+qfFEp3ZjfBhRIB3JE18ooV2xr068a/CQFWE0e0Sa475f6Gtn2ooUSzZPlhGqt67eHSmMBnimPsvM4C/SbCwnoM2JXmT4jJMEKotP+kb6ylvGwtyI/jkHuYp+1w3sh9Zju+ztRhb9U4DhhExV5p4RCFQgB7s/g64EtI9Z813/re77uo7A+7esM9FeP9eAwIDAQAB",
   "permissions": ["tabs", "idle", "windows"],
   "host_permissions": ["http://127.0.0.1:51247/*"],
   "background": {

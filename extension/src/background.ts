@@ -1,6 +1,6 @@
 export const INGEST_URL = "http://127.0.0.1:51247/usage-events";
-// MVP-only shared secret. Replace this with a per-install generated token.
-export const INGEST_TOKEN = "superpower-time-manager-dev-token";
+export const CONFIG_URL = "http://127.0.0.1:51247/config";
+export const COMPANION_EXTENSION_ORIGIN = "chrome-extension://okcchcpgcebnenmenmfjbpnnkjoepien";
 
 export interface MinimalTab {
   url?: string;
@@ -31,6 +31,8 @@ export interface ActiveUsageDependencies {
 export interface SendActiveTabDependencies extends ActiveUsageDependencies {
   fetchUsageEvent?: typeof fetch;
 }
+
+let cachedIngestToken: string | null = null;
 
 export function normalizeDomain(url: string): string {
   try {
@@ -90,11 +92,14 @@ export async function sendActiveTab(
 
   try {
     const fetchUsageEvent = dependencies.fetchUsageEvent ?? fetch;
+    const ingestToken = await getIngestToken(fetchUsageEvent);
+    if (!ingestToken) return;
+
     const response = await fetchUsageEvent(INGEST_URL, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-time-manager-token": INGEST_TOKEN,
+        "x-time-manager-token": ingestToken,
       },
       body: JSON.stringify(event),
     });
@@ -102,6 +107,30 @@ export async function sendActiveTab(
   } catch {
     // The desktop app may be closed. MVP retries on the next browser event.
   }
+}
+
+async function getIngestToken(fetchUsageEvent: typeof fetch): Promise<string | null> {
+  if (cachedIngestToken) return cachedIngestToken;
+
+  try {
+    const response = await fetchUsageEvent(CONFIG_URL, {
+      method: "GET",
+      headers: { accept: "application/json" },
+    });
+    if (!response.ok) return null;
+
+    const config = (await response.json()) as { ingestToken?: unknown };
+    if (typeof config.ingestToken !== "string" || !config.ingestToken.trim()) return null;
+
+    cachedIngestToken = config.ingestToken;
+    return cachedIngestToken;
+  } catch {
+    return null;
+  }
+}
+
+export function resetIngestConfigCacheForTests(): void {
+  cachedIngestToken = null;
 }
 
 function getDefaultDependencies(): SendActiveTabDependencies {

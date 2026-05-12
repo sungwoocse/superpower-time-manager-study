@@ -2,17 +2,18 @@ pub mod commands;
 pub mod db;
 pub mod http;
 pub mod models;
+pub mod token;
 
 use std::sync::{Arc, Mutex};
 
-use commands::{ingest_usage_event, AppState};
+use commands::{app_status, ingest_usage_event, AppState};
 use rusqlite::Connection;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![ingest_usage_event])
+        .invoke_handler(tauri::generate_handler![ingest_usage_event, app_status])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -27,6 +28,7 @@ pub fn run() {
 
             let db_path = app_data_dir.join("time_manager.sqlite3");
             let conn = Arc::new(Mutex::new(Connection::open(db_path)?));
+            let ingest_server_error = Arc::new(Mutex::new(None));
             {
                 let conn = conn
                     .lock()
@@ -34,9 +36,18 @@ pub fn run() {
                 db::init_db(&conn)?;
             }
 
-            http::start_ingest_server(conn.clone()).map_err(std::io::Error::other)?;
+            let ingest_token = token::load_or_create_ingest_token(&app_data_dir)?;
+            if let Err(error) = http::start_ingest_server(conn.clone(), ingest_token) {
+                log::error!("{error}");
+                if let Ok(mut current_error) = ingest_server_error.lock() {
+                    *current_error = Some(error);
+                }
+            }
 
-            app.manage(AppState { conn });
+            app.manage(AppState {
+                conn,
+                ingest_server_error,
+            });
 
             Ok(())
         })
