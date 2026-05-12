@@ -2,6 +2,8 @@ use chrono::DateTime;
 use rusqlite::{params, Connection, Result as SqlResult};
 use url::Url;
 
+use crate::models::DomainRule;
+
 pub fn init_db(conn: &Connection) -> SqlResult<()> {
     conn.execute_batch(
         "
@@ -47,6 +49,19 @@ pub fn init_db(conn: &Connection) -> SqlResult<()> {
     }
 
     Ok(())
+}
+
+pub fn list_domain_rules(conn: &Connection) -> SqlResult<Vec<DomainRule>> {
+    let mut statement =
+        conn.prepare("select domain, classification from domain_rules order by domain asc")?;
+    let rules = statement.query_map([], |row| {
+        Ok(DomainRule {
+            domain: row.get(0)?,
+            classification: row.get(1)?,
+        })
+    })?;
+
+    rules.collect()
 }
 
 pub fn insert_usage_event(
@@ -199,6 +214,29 @@ mod tests {
             .unwrap();
 
         assert_eq!(count, 4);
+    }
+
+    #[test]
+    fn lists_domain_rules_sorted_by_domain_after_init() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+
+        let rules = list_domain_rules(&conn).unwrap();
+
+        let actual = rules
+            .iter()
+            .map(|rule| (rule.domain.as_str(), rule.classification.as_str()))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            actual,
+            vec![
+                ("chat.openai.com", "productive"),
+                ("chatgpt.com", "productive"),
+                ("instagram.com", "unproductive"),
+                ("youtube.com", "unproductive"),
+            ]
+        );
     }
 
     #[test]

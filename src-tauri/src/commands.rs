@@ -4,8 +4,8 @@ use rusqlite::Connection;
 use serde::Serialize;
 use tauri::State;
 
-use crate::db::insert_usage_event;
-use crate::models::UsageEvent;
+use crate::db::{insert_usage_event, list_domain_rules};
+use crate::models::{DomainRule, UsageEvent};
 
 pub struct AppState {
     pub conn: Arc<Mutex<Connection>>,
@@ -44,6 +44,16 @@ pub fn ingest_usage_event(event: UsageEvent, state: State<'_, AppState>) -> Resu
 #[tauri::command]
 pub fn app_status(state: State<'_, AppState>) -> Result<AppStatus, String> {
     current_app_status(&state.ingest_server_error)
+}
+
+#[tauri::command]
+pub fn get_domain_rules(state: State<'_, AppState>) -> Result<Vec<DomainRule>, String> {
+    let conn = state
+        .conn
+        .lock()
+        .map_err(|_| "database lock failed".to_string())?;
+
+    list_domain_rules(&conn).map_err(|error| error.to_string())
 }
 
 pub fn current_app_status(

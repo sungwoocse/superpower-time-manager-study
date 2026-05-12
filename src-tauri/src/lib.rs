@@ -6,14 +6,18 @@ pub mod token;
 
 use std::sync::{Arc, Mutex};
 
-use commands::{app_status, ingest_usage_event, AppState};
+use commands::{app_status, get_domain_rules, ingest_usage_event, AppState};
 use rusqlite::Connection;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![ingest_usage_event, app_status])
+        .invoke_handler(tauri::generate_handler![
+            ingest_usage_event,
+            app_status,
+            get_domain_rules
+        ])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

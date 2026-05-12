@@ -18,3 +18,10 @@ pub struct UsageEvent {
     pub event_type: String,
     pub timestamp: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DomainRule {
+    pub domain: String,
+    pub classification: String,
+}

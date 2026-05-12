@@ -1,11 +1,18 @@
+import { RulesPanel } from "./components/RulesPanel";
 import { SiteTable, type SiteUsageRow } from "./components/SiteTable";
 import { SummaryCards } from "./components/SummaryCards";
+import type { DomainRule } from "./shared/types";
 import "./styles.css";
 
 const rows: SiteUsageRow[] = [
   { domain: "chatgpt.com", classification: "productive", seconds: 25 * 60 },
   { domain: "youtube.com", classification: "unproductive", seconds: 90 * 60 },
   { domain: "example.com", classification: "neutral", seconds: 12 * 60 },
+];
+
+const rules: DomainRule[] = [
+  { domain: "chatgpt.com", classification: "productive" },
+  { domain: "youtube.com", classification: "unproductive" },
 ];
 
 export function App() {
@@ -32,7 +39,10 @@ export function App() {
         unproductiveSeconds={unproductiveSeconds}
         neutralSeconds={neutralSeconds}
       />
-      <SiteTable rows={rows} />
+      <div className="dashboard-grid">
+        <SiteTable rows={rows} />
+        <RulesPanel rules={rules} />
+      </div>
     </main>
   );
 }
