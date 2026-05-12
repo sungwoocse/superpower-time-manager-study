@@ -1,6 +1,24 @@
+import { SiteTable, type SiteUsageRow } from "./components/SiteTable";
+import { SummaryCards } from "./components/SummaryCards";
 import "./styles.css";
 
+const rows: SiteUsageRow[] = [
+  { domain: "chatgpt.com", classification: "productive", seconds: 25 * 60 },
+  { domain: "youtube.com", classification: "unproductive", seconds: 90 * 60 },
+  { domain: "example.com", classification: "neutral", seconds: 12 * 60 },
+];
+
 export function App() {
+  const productiveSeconds = rows
+    .filter((row) => row.classification === "productive")
+    .reduce((total, row) => total + row.seconds, 0);
+  const unproductiveSeconds = rows
+    .filter((row) => row.classification === "unproductive")
+    .reduce((total, row) => total + row.seconds, 0);
+  const neutralSeconds = rows
+    .filter((row) => row.classification === "neutral")
+    .reduce((total, row) => total + row.seconds, 0);
+
   return (
     <main className="app-shell">
       <header className="app-header">
@@ -9,20 +27,12 @@ export function App() {
           <h1>Superpower Time Manager</h1>
         </div>
       </header>
-      <section className="summary-grid" aria-label="Today summary">
-        <article>
-          <span>Productive</span>
-          <strong>0m</strong>
-        </article>
-        <article>
-          <span>Unproductive</span>
-          <strong>0m</strong>
-        </article>
-        <article>
-          <span>Neutral</span>
-          <strong>0m</strong>
-        </article>
-      </section>
+      <SummaryCards
+        productiveSeconds={productiveSeconds}
+        unproductiveSeconds={unproductiveSeconds}
+        neutralSeconds={neutralSeconds}
+      />
+      <SiteTable rows={rows} />
     </main>
   );
 }
