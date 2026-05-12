@@ -1,0 +1,59 @@
+:root {
+  color: #172026;
+  background: #f6f7f4;
+  font-family: Inter, Segoe UI, Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 32px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #5f6b5d;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 0;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-grid article {
+  border: 1px solid #d8ded2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.summary-grid span {
+  display: block;
+  color: #5f6b5d;
+  font-size: 13px;
+}
+
+.summary-grid strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 30px;
+}
