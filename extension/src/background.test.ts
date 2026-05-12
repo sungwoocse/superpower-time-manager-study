@@ -8,6 +8,9 @@ describe("buildUsageEvent", () => {
       title: "Instagram",
     });
 
+    expect(event).not.toBeNull();
+    if (!event) throw new Error("expected usage event");
+
     expect(event.domain).toBe("instagram.com");
     expect(event.browser).toBe("unknown");
     expect(event.eventType).toBe("active");
