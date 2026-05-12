@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Superpower Time Manager Tracker",
+  "version": "0.1.0",
+  "description": "Tracks active browser tab usage for the local desktop app.",
+  "permissions": ["tabs", "activeTab", "idle"],
+  "host_permissions": ["http://127.0.0.1:51247/*"],
+  "background": {
+    "service_worker": "dist/background.js"
+  }
+}
