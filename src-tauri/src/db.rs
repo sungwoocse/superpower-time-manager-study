@@ -47,6 +47,28 @@ pub fn init_db(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+pub fn insert_usage_event(
+    conn: &Connection,
+    url: &str,
+    domain: &str,
+    title: &str,
+    browser: &str,
+    event_type: &str,
+    timestamp: &str,
+) -> Result<()> {
+    conn.execute(
+        "
+        insert into usage_events
+            (url, domain, title, browser, event_type, timestamp)
+        values
+            (?1, ?2, ?3, ?4, ?5, ?6)
+        ",
+        params![url, domain, title, browser, event_type, timestamp],
+    )?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -89,6 +111,29 @@ mod tests {
             .unwrap();
 
         assert_eq!(count, 4);
+    }
+
+    #[test]
+    fn stores_usage_event() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+
+        insert_usage_event(
+            &conn,
+            "https://youtube.com/watch?v=abc",
+            "youtube.com",
+            "Video",
+            "chrome",
+            "active",
+            "2026-05-12T08:00:00Z",
+        )
+        .unwrap();
+
+        let count: i64 = conn
+            .query_row("select count(*) from usage_events", [], |row| row.get(0))
+            .unwrap();
+
+        assert_eq!(count, 1);
     }
 
     #[test]
