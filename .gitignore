@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-ssr/
+.vite/
+.turbo/
+target/
+src-tauri/target/
+*.log
+*.sqlite
+*.sqlite3
+.env
+.env.*
+!.env.example
+extension/dist/
