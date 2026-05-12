@@ -24,6 +24,8 @@ Use these checks before uploading or reviewing the Windows-first MVP. The app is
 
 4. Confirm the app window opens and the dashboard renders summary cards, the Sites table, and the Rules list.
 
+5. For direct database inspection, install the SQLite CLI or use any SQLite browser that can open a local `.sqlite3` file. The app itself does not require the SQLite CLI.
+
 ## Desktop App
 
 1. Keep `npm run tauri dev` running.
@@ -48,11 +50,13 @@ Use these checks before uploading or reviewing the Windows-first MVP. The app is
    - `https://www.youtube.com`
    - `https://www.instagram.com`
 7. Leave the Chrome window focused and the OS idle state active while switching tabs. The MVP only sends active tab events for the focused browser window.
-8. Confirm usage events are inserted into SQLite:
+8. Confirm usage events are inserted into SQLite. If the SQLite CLI is installed, run:
 
    ```powershell
    sqlite3 "$env:APPDATA\com.sungwoocse.superpower-time-manager\time_manager.sqlite3" "select id, domain, title, browser, event_type, timestamp from usage_events order by id desc limit 10;"
    ```
+
+   Without the SQLite CLI, open the same database path in a SQLite browser and inspect the `usage_events` table.
 
 9. Confirm rows appear for the visited domains. The extension reports `browser` as `unknown` in the current MVP.
 

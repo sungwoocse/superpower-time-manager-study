@@ -5,7 +5,7 @@ Windows-first browser time tracking MVP for personal productivity study.
 ## Scope
 
 - Chromium browser extension for active tab tracking.
-- Tauri desktop app for local statistics.
+- Tauri desktop app for local storage, ingestion, and MVP dashboard surfaces.
 - SQLite local storage.
 - No blocking, alerts, cloud sync, accounts, macOS support, or desktop-wide app tracking in the MVP.
 
@@ -39,8 +39,17 @@ Run verification before review:
 npm test
 npm run build
 npm run extension:build
-C:\Users\bluew\.cargo\bin\cargo.exe test
-C:\Users\bluew\.cargo\bin\cargo.exe check
+cargo test --manifest-path src-tauri/Cargo.toml
+cargo check --manifest-path src-tauri/Cargo.toml
+```
+
+If `cargo` is not on `PATH`, use the bundled Rust install path from `src-tauri`:
+
+```powershell
+Push-Location src-tauri
+& "$env:USERPROFILE\.cargo\bin\cargo.exe" test
+& "$env:USERPROFILE\.cargo\bin\cargo.exe" check
+Pop-Location
 ```
 
 Manual verification steps are in [docs/manual-test.md](docs/manual-test.md).
