@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use rusqlite::Connection;
 use tauri::State;
@@ -7,7 +7,7 @@ use crate::db::insert_usage_event;
 use crate::models::UsageEvent;
 
 pub struct AppState {
-    pub conn: Mutex<Connection>,
+    pub conn: Arc<Mutex<Connection>>,
 }
 
 #[tauri::command]

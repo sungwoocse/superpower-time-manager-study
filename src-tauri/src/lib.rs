@@ -1,8 +1,9 @@
 pub mod commands;
 pub mod db;
+pub mod http;
 pub mod models;
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use commands::{ingest_usage_event, AppState};
 use rusqlite::Connection;
@@ -25,12 +26,19 @@ pub fn run() {
             std::fs::create_dir_all(&app_data_dir)?;
 
             let db_path = app_data_dir.join("time_manager.sqlite3");
-            let conn = Connection::open(db_path)?;
-            db::init_db(&conn)?;
+            let conn = Arc::new(Mutex::new(Connection::open(db_path)?));
+            {
+                let conn = conn
+                    .lock()
+                    .map_err(|_| std::io::Error::other("database lock failed"))?;
+                db::init_db(&conn)?;
+            }
 
-            app.manage(AppState {
-                conn: Mutex::new(conn),
-            });
+            if let Err(error) = http::start_ingest_server(conn.clone()) {
+                log::error!("{error}");
+            }
+
+            app.manage(AppState { conn });
 
             Ok(())
         })
