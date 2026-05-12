@@ -1,4 +1,6 @@
 export const INGEST_URL = "http://127.0.0.1:51247/usage-events";
+// MVP-only shared secret. Replace this with a per-install generated token.
+export const INGEST_TOKEN = "superpower-time-manager-dev-token";
 
 export interface MinimalTab {
   url?: string;
@@ -90,7 +92,10 @@ export async function sendActiveTab(
     const fetchUsageEvent = dependencies.fetchUsageEvent ?? fetch;
     const response = await fetchUsageEvent(INGEST_URL, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-time-manager-token": INGEST_TOKEN,
+      },
       body: JSON.stringify(event),
     });
     if (!response.ok) return;

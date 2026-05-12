@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildUsageEvent, isActiveUsageEligible, sendActiveTab } from "./background";
+import { buildUsageEvent, INGEST_TOKEN, isActiveUsageEligible, sendActiveTab } from "./background";
 
 describe("buildUsageEvent", () => {
   it("normalizes Instagram tab data into an active usage event", () => {
@@ -77,6 +77,29 @@ describe("sendActiveTab", () => {
     );
 
     expect(fetchUsageEvent).not.toHaveBeenCalled();
+  });
+
+  it("sends the local ingestion token header", async () => {
+    const fetchUsageEvent = vi.fn().mockResolvedValue({ ok: true });
+
+    await sendActiveTab(
+      { url: "https://www.instagram.com/reels/", title: "Instagram", windowId: 1 },
+      {
+        fetchUsageEvent,
+        getWindow: async () => ({ focused: true }),
+        queryIdleState: async () => "active",
+      },
+    );
+
+    expect(fetchUsageEvent).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: {
+          "content-type": "application/json",
+          "x-time-manager-token": INGEST_TOKEN,
+        },
+      }),
+    );
   });
 });
 

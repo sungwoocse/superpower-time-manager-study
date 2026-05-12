@@ -34,9 +34,7 @@ pub fn run() {
                 db::init_db(&conn)?;
             }
 
-            if let Err(error) = http::start_ingest_server(conn.clone()) {
-                log::error!("{error}");
-            }
+            http::start_ingest_server(conn.clone()).map_err(std::io::Error::other)?;
 
             app.manage(AppState { conn });
 
