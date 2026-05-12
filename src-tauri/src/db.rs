@@ -1,5 +1,6 @@
 use chrono::DateTime;
 use rusqlite::{params, Connection, Result as SqlResult};
+use url::Url;
 
 pub fn init_db(conn: &Connection) -> SqlResult<()> {
     conn.execute_batch(
@@ -98,7 +99,7 @@ fn validate_usage_event(
     timestamp: &str,
 ) -> Result<ValidatedUsageEvent, String> {
     let url = url.trim();
-    let domain = domain.trim().to_lowercase();
+    let domain = normalize_domain(domain);
     let title = title.trim();
     let browser = browser.trim();
     let event_type = event_type.trim();
@@ -117,6 +118,16 @@ fn validate_usage_event(
         return Err("timestamp is required".to_string());
     }
 
+    let parsed_url = Url::parse(url).map_err(|_| "url must be a valid URL".to_string())?;
+    if !matches!(parsed_url.scheme(), "http" | "https") {
+        return Err("url scheme must be http or https".to_string());
+    }
+
+    let url_domain = parsed_url
+        .host_str()
+        .map(normalize_domain)
+        .ok_or_else(|| "url must include a host".to_string())?;
+
     if domain.contains("://")
         || domain.contains('/')
         || domain.chars().any(char::is_whitespace)
@@ -125,8 +136,11 @@ fn validate_usage_event(
         return Err("domain must be a host name like example.com".to_string());
     }
 
-    DateTime::parse_from_rfc3339(timestamp)
-        .map_err(|_| "timestamp must be RFC3339".to_string())?;
+    if domain != url_domain {
+        return Err("domain must match url host".to_string());
+    }
+
+    DateTime::parse_from_rfc3339(timestamp).map_err(|_| "timestamp must be RFC3339".to_string())?;
 
     Ok(ValidatedUsageEvent {
         url: url.to_string(),
@@ -136,6 +150,11 @@ fn validate_usage_event(
         event_type: event_type.to_string(),
         timestamp: timestamp.to_string(),
     })
+}
+
+fn normalize_domain(domain: &str) -> String {
+    let domain = domain.trim().to_lowercase();
+    domain.strip_prefix("www.").unwrap_or(&domain).to_string()
 }
 
 #[cfg(test)]
@@ -267,6 +286,83 @@ mod tests {
         );
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_usage_event_url_string() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+
+        let result = insert_usage_event(
+            &conn,
+            "not a url",
+            "example.com",
+            "Example",
+            "chrome",
+            "active",
+            "2026-05-12T08:00:00Z",
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_non_http_usage_event_url_scheme() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+
+        let result = insert_usage_event(
+            &conn,
+            "chrome://extensions",
+            "extensions",
+            "Extensions",
+            "chrome",
+            "active",
+            "2026-05-12T08:00:00Z",
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_mismatched_usage_event_url_and_domain() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+
+        let result = insert_usage_event(
+            &conn,
+            "https://youtube.com/watch?v=abc",
+            "example.com",
+            "Video",
+            "chrome",
+            "active",
+            "2026-05-12T08:00:00Z",
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn stores_www_usage_event_url_as_root_domain() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+
+        insert_usage_event(
+            &conn,
+            "https://www.youtube.com/watch?v=abc",
+            "youtube.com",
+            "Video",
+            "chrome",
+            "active",
+            "2026-05-12T08:00:00Z",
+        )
+        .unwrap();
+
+        let domain: String = conn
+            .query_row("select domain from usage_events", [], |row| row.get(0))
+            .unwrap();
+
+        assert_eq!(domain, "youtube.com");
     }
 
     #[test]
